@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AGY Conversation Forker</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Conversation Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <span class="brand-icon">⑂</span>
+          <div>
+            <h1>AGY Forker</h1>
+            <p id="data-dir-label" class="subtitle">~/.gemini/antigravity</p>
+          </div>
+        </div>
+        <button id="refresh-btn" class="icon-btn" title="Refresh conversation list">↻</button>
+      </div>
+
+      <div class="sidebar-filters">
+        <input
+          type="text"
+          id="search-input"
+          class="input"
+          placeholder="Search title, ID, content..."
+        />
+        <select id="project-select" class="select">
+          <option value="">All Projects / Workspaces</option>
+        </select>
+      </div>
+
+      <div id="conversation-list" class="conversation-list">
+        <div class="empty-hint">Loading conversations...</div>
+      </div>
+    </aside>
+
+    <!-- Main Detail & Message Timeline Panel -->
+    <main class="main-panel">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">⑂</div>
+        <h2>Select a conversation from the sidebar</h2>
+        <p>
+          Browse conversation history in rich Markdown, fork (clone or branch) from any
+          specific <strong>Message</strong>, or delete unused conversations.
+        </p>
+      </div>
+
+      <div id="detail-view" class="detail-view hidden">
+        <header class="detail-header">
+          <div class="detail-title-group">
+            <h2 id="detail-title">Conversation Title</h2>
+            <div class="detail-meta">
+              <span id="detail-id" class="mono-badge" title="Click to copy Conversation ID"></span>
+              <span id="detail-status" class="status-badge"></span>
+              <span id="detail-project" class="meta-pill"></span>
+              <span id="detail-counts" class="meta-pill"></span>
+            </div>
+          </div>
+          <div class="detail-actions">
+            <button id="delete-conv-btn" class="btn btn-danger" title="Permanently delete this conversation">
+              🗑️ Delete
+            </button>
+            <button id="fork-full-btn" class="btn btn-primary">
+              ⑂ Fork Full Conversation
+            </button>
+          </div>
+        </header>
+
+        <div id="toast-banner" class="toast-banner hidden"></div>
+
+        <!-- Brain Artifacts Bar -->
+        <section id="artifacts-bar" class="artifacts-bar hidden">
+          <span class="artifacts-label">📄 Brain Artifacts:</span>
+          <div id="artifacts-list" class="artifacts-list"></div>
+        </section>
+
+        <!-- Message Filter & Markdown Mode Toolbar -->
+        <div class="timeline-toolbar">
+          <div class="filter-tabs">
+            <button class="tab-btn active" data-role="all">All Messages</button>
+            <button class="tab-btn" data-role="user">User Only</button>
+            <button class="tab-btn" data-role="agent">Agent Only</button>
+          </div>
+          <div class="toolbar-right">
+            <button id="toggle-md-btn" class="btn btn-secondary btn-sm" title="Toggle between Markdown and Raw Text view">
+              📝 View: Markdown
+            </button>
+          </div>
+        </div>
+
+        <!-- Messages Timeline -->
+        <div id="messages-container" class="messages-container"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Fork Confirmation Modal -->
+  <div id="fork-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">Fork Conversation</h3>
+        <button id="modal-close-btn" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-scope-info" class="scope-box"></div>
+
+        <label class="form-label" for="fork-title-input">New Conversation Title</label>
+        <input
+          type="text"
+          id="fork-title-input"
+          class="input"
+          placeholder="Enter a title for the forked conversation..."
+        />
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="fork-copy-brain" checked />
+          <span>
+            Copy <code>brain/&lt;id&gt;</code> directory (artifacts, plans, and filtered transcript logs up to the fork point)
+          </span>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button id="modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button id="modal-confirm-btn" class="btn btn-primary">⑂ Confirm Fork</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="delete-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>🗑️ Delete Conversation</h3>
+        <button id="delete-close-btn" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="delete-scope-info" class="scope-box scope-danger"></div>
+        <p class="modal-warning-text">
+          This action permanently deletes the conversation from <code>conversations/</code>,
+          <code>conversation_summaries.db</code>, <code>annotations/</code>, and <code>brain/</code>.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button id="delete-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button id="delete-confirm-btn" class="btn btn-danger">🗑️ Delete Permanently</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

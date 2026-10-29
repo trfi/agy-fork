@@ -1,0 +1,14 @@
+{
+  "name": "agy-fork",
+  "version": "1.0.0",
+  "description": "Local Web UI to browse and fork Google Antigravity conversations at any message boundary",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
