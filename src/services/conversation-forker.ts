@@ -17,6 +17,7 @@ import {
   filterGenMetadataByStep,
   removeAgyhubMapEntry,
   replaceBytesAll,
+  updateStepTimestamps,
 } from "../proto/codec.ts";
 import type { ForkOptions, ForkResult } from "../types/conversation.ts";
 import { resolveAntigravityPaths } from "./antigravity-paths.ts";
@@ -366,6 +367,42 @@ export function forkConversation(
       )
       .get() as { last_idx: number };
     lastUserInputStepIdx = lastUserRow.last_idx;
+
+    const maxKeptRow = newDb
+      .query(`SELECT COALESCE(MAX(idx), -1) as max_idx FROM steps`)
+      .get() as { max_idx: number };
+    const maxKeptStepIdx = maxKeptRow.max_idx;
+
+    const nowForSteps = new Date();
+    const updateStepMetaAndPayload = newDb.query(
+      `UPDATE steps SET metadata = ?, step_payload = ? WHERE idx = ?`
+    );
+
+    // Update timestamps on last user input step and last overall step so Antigravity
+    // places the forked conversation at the very top of the conversation list.
+    const stepIndicesToTouch = Array.from(
+      new Set([lastUserInputStepIdx, maxKeptStepIdx].filter((i) => i >= 0))
+    );
+    for (const idxToTouch of stepIndicesToTouch) {
+      const sRow = newDb
+        .query(`SELECT metadata, step_payload FROM steps WHERE idx = ?`)
+        .get(idxToTouch) as {
+        metadata: Uint8Array | null;
+        step_payload: Uint8Array | null;
+      } | null;
+      if (sRow) {
+        const touched = updateStepTimestamps(
+          sRow.metadata ? new Uint8Array(sRow.metadata) : null,
+          sRow.step_payload ? new Uint8Array(sRow.step_payload) : null,
+          nowForSteps
+        );
+        updateStepMetaAndPayload.run(
+          touched.metadata,
+          touched.stepPayload,
+          idxToTouch
+        );
+      }
+    }
 
     newDb.exec("COMMIT");
     newDb.exec("VACUUM");

@@ -204,6 +204,92 @@ export function encodeTimestampProto(date: Date): Uint8Array {
 }
 
 /**
+ * Updates embedded timestamps inside a step's `metadata` (fields 1, 6, 7, 8, 26, 32)
+ * and `step_payload` (field 5, which embeds `metadata`) so Antigravity's indexer sorts
+ * the newly forked conversation at the very top of the sidebar.
+ */
+export function updateStepTimestamps(
+  metadata: Uint8Array | null,
+  stepPayload: Uint8Array | null,
+  now: Date
+): { metadata: Uint8Array | null; stepPayload: Uint8Array | null } {
+  const tsBytes = encodeTimestampProto(now);
+
+  const transformMeta = (metaBuf: Uint8Array): Uint8Array => {
+    const fields = decodeProtoFields(metaBuf);
+    if (!fields) return metaBuf;
+
+    const out: ProtoField[] = [];
+    for (const f of fields) {
+      if (
+        (f.fieldNumber === 1 ||
+          f.fieldNumber === 6 ||
+          f.fieldNumber === 7 ||
+          f.fieldNumber === 8 ||
+          f.fieldNumber === 32) &&
+        f.wireType === 2
+      ) {
+        out.push({ fieldNumber: f.fieldNumber, wireType: 2, value: tsBytes });
+      } else if (f.fieldNumber === 26 && f.wireType === 2) {
+        const sub26 = decodeProtoFields(f.value as Uint8Array);
+        if (sub26) {
+          const newSub26: ProtoField[] = sub26.map((entry) => {
+            if (entry.fieldNumber === 1 && entry.wireType === 2) {
+              const inner = decodeProtoFields(entry.value as Uint8Array);
+              if (inner) {
+                const updatedInner = inner.map((inf) =>
+                  inf.fieldNumber === 2 && inf.wireType === 2
+                    ? { fieldNumber: 2, wireType: 2 as const, value: tsBytes }
+                    : inf
+                );
+                return {
+                  fieldNumber: 1,
+                  wireType: 2 as const,
+                  value: encodeProtoFields(updatedInner),
+                };
+              }
+            }
+            return entry;
+          });
+          out.push({
+            fieldNumber: 26,
+            wireType: 2,
+            value: encodeProtoFields(newSub26),
+          });
+        } else {
+          out.push(f);
+        }
+      } else {
+        out.push(f);
+      }
+    }
+    return encodeProtoFields(out);
+  };
+
+  const newMeta = metadata ? transformMeta(metadata) : null;
+  let newPayload = stepPayload;
+
+  if (stepPayload) {
+    const payFields = decodeProtoFields(stepPayload);
+    if (payFields) {
+      const updatedPayFields = payFields.map((pf) => {
+        if (pf.fieldNumber === 5 && pf.wireType === 2) {
+          return {
+            fieldNumber: 5,
+            wireType: 2 as const,
+            value: newMeta ?? transformMeta(pf.value as Uint8Array),
+          };
+        }
+        return pf;
+      });
+      newPayload = encodeProtoFields(updatedPayFields);
+    }
+  }
+
+  return { metadata: newMeta, stepPayload: newPayload };
+}
+
+/**
  * Rebuilds the `raw_summary` protobuf blob in `conversation_summaries.db`
  * with the new title, step count, trajectory ID, conversation ID, and IDLE status.
  */
